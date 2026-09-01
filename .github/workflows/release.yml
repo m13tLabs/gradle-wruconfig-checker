@@ -1,0 +1,99 @@
+name: Create release # You may choose a different name
+run-name: ${{ inputs.releaseversion }} # Enumerates entries in the "workflow runs" view
+on:
+  workflow_dispatch:
+    inputs:
+      releaseversion:
+        description: 'Release version'
+        required: true
+        type: string
+        default: 'X.Y.Z'
+
+jobs:
+  release: # Arbitrarily chosen
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ vars.CI_APP_ID }}
+          private-key: ${{ secrets.CI_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure git
+        run: |
+          git config --global user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config --global user.email '${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com>'
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin' # As good as any other, see: https://github.com/actions/setup-java#supported-distributions
+          java-package: 'jdk'
+          java-version: '17'
+          check-latest: true
+          cache: 'gradle'
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSS_SONATYPE_USER }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSS_SONATYPE_PASS }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.OSS_SONATYPE_GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.OSS_SONATYPE_GPG_PASSPHRASE }}
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+        run: |
+          export TZ="Europe/Berlin"
+          ./gradlew publishAndReleaseToMavenCentral publishPlugins -PreleaseVersion=${{ inputs.releaseversion }} -x test
+          # write version info
+          mkdir -p build
+          cat <<EOF >build/config.json
+          {
+            "version": "${{ inputs.releaseversion }}"
+          }
+          EOF
+
+      - name: Generate Changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --tag v${{ inputs.releaseversion }} --prepend CHANGELOG.md --unreleased
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Commit Changelog
+        run: |
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "chore(release): update changelog for v${{ inputs.releaseversion }}"
+          git tag v${{ github.event.inputs.releaseversion }} || true
+          git push --tags || true
+          git push || true
+
+      - name: Create Release on GH
+        id: tag-and-release
+        uses: avakar/tag-and-release@v1
+        with:
+          draft: true
+          release_name: ${{ github.event.inputs.releaseversion }}
+          tag_name: v${{ github.event.inputs.releaseversion }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

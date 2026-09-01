@@ -40,4 +40,19 @@ jobs:
           path: |
             build/reports/tests/test
             build/test-results/test
-          if-no-files-found: ignore
+            if-no-files-found: ignore
+
+  build-results:
+    name: Build results
+    if: always()
+    runs-on: ${{ inputs.runs_on }}
+    needs: [build]
+    steps:
+      - run: exit 1
+        # see https://stackoverflow.com/a/67532120/4907315
+        if: >-
+          ${{
+            contains(needs.*.result, 'failure')
+            || contains(needs.*.result, 'cancelled')
+            || contains(needs.*.result, 'skipped')
+          }}
