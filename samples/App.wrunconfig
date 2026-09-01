@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Process>
+    <Filename>[APPDIR]\client\jre\bin\javaw.exe</Filename>
+    <WorkingDirectory>[APPDIR]\client</WorkingDirectory>
+    <Arguments>-Xmx512m -cp "lib\app.jar;lib\deps.jar;[RETRIVEFROMREGISTRY|HKLM|SOFTWARE\Acme|ExtraCp|plugins\default.jar]" com.acme.client.Main [ARGS]</Arguments>
+  </Process>
+  <EnvironmentVariable>
+    <Name>APP_HOME</Name>
+    <Value>[APPDIR]\client</Value>
+  </EnvironmentVariable>
+</Configuration>
