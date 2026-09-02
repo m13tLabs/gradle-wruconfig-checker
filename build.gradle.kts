@@ -14,7 +14,7 @@ repositories { mavenCentral() }
 
 dependencies {
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.5")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.14.4")
     testImplementation(gradleTestKit())
 }
 
