@@ -1,6 +1,10 @@
+import com.vanniktech.maven.publish.GradlePublishPlugin
+
 plugins {
     `java-gradle-plugin`
     kotlin("jvm") version "1.9.25"
+    id("com.gradle.plugin-publish") version "2.1.1"
+    id("com.vanniktech.maven.publish") version "0.35.0"
 }
 
 group = "de.m13t.oss"
@@ -15,7 +19,7 @@ dependencies {
 }
 
 mavenPublishing {
-    configure(new GradlePublishPlugin())
+    configure(GradlePublishPlugin())
 
     coordinates(group.toString(), "msixwrapper-verify-gradle-plugin", version.toString())
 
@@ -51,13 +55,15 @@ mavenPublishing {
 }
 
 gradlePlugin {
+    website = "https://github.com/m13tLabs/gradle-wruconfig-checker"
+    vcsUrl = "https://github.com/m13tLabs/gradle-wruconfig-checker.git"
     plugins {
         create("wrunconfigVerify") {
             id = "de.m13t.wrunconfig-verify"
             implementationClass = "de.m13t.wrunconfig.WrunconfigVerifyPlugin"
             displayName = "wrunconfig classpath verifier"
             description = "Verifies classpath entries and main class in MSIX-Power-Wrapper .wrunconfig files."
-            tags.set(["java", "code quality", "msix", "wru", "MSIX-Power-Wrapper"])
+            tags.set(listOf("java", "code quality", "msix", "wru", "MSIX-Power-Wrapper"))
         }
     }
 }
