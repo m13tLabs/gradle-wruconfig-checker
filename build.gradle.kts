@@ -3,7 +3,7 @@ plugins {
     kotlin("jvm") version "1.9.25"
 }
 
-group = "de.m13t.gradle"
+group = "de.m13t.oss"
 version = findProperty("releaseVersion") ?: "0.0.1-SNAPSHOT"
 
 repositories { mavenCentral() }
@@ -14,6 +14,42 @@ dependencies {
     testImplementation(gradleTestKit())
 }
 
+mavenPublishing {
+    configure(new GradlePublishPlugin())
+
+    coordinates(group.toString(), "msixwrapper-verify-gradle-plugin", version.toString())
+
+    publishToMavenCentral()
+    signAllPublications()
+
+    pom {
+        name = "MSIX-Power-Wrapper Check Plugin"
+        description = "A Gradle plugin that verifies the MSIX-Power-Wrapper project settings"
+        url = "https://github.com/m13tLabs/gradle-wruconfig-checker"
+
+        licenses {
+            license {
+                name = "MIT License"
+                url = "https://mit-license.org"
+            }
+        }
+
+        developers {
+            developer {
+                id = "mreinhardt"
+                name = "Martin Reinhardt"
+                email = "martin@m13t.de"
+            }
+        }
+
+        scm {
+            url = "https://github.com/m13tLabs/gradle-wruconfig-checker"
+            connection = "scm:git:git://github.com/m13tLabs/gradle-wruconfig-checker.git"
+            developerConnection = "scm:git:ssh://git@github.com/m13tLabs/gradle-wruconfig-checker.git"
+        }
+    }
+}
+
 gradlePlugin {
     plugins {
         create("wrunconfigVerify") {
@@ -21,6 +57,7 @@ gradlePlugin {
             implementationClass = "de.m13t.wrunconfig.WrunconfigVerifyPlugin"
             displayName = "wrunconfig classpath verifier"
             description = "Verifies classpath entries and main class in MSIX-Power-Wrapper .wrunconfig files."
+            tags.set(["java", "code quality", "msix", "wru", "MSIX-Power-Wrapper"])
         }
     }
 }

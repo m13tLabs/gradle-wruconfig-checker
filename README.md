@@ -56,7 +56,7 @@ statically, so it's reported and skipped unless `failOnDynamic` is set.
 
 ```kotlin
 plugins {
-    id("de.m13t.wrunconfig-verify") version "0.1.0"
+    id("de.m13t.msixwrapper-verify-gradle-plugin") version "0.1.0"
 }
 
 wrunconfigVerify {
@@ -137,7 +137,7 @@ non-zero on failure.
 
 ## Notes
 
-- Group/plugin id (`de.m13t.gradle` / `de.m13t.wrunconfig-verify`) are placeholders;
+- Group/plugin id (`de.m13t.oss` / `de.m13t.wrunconfig-verify`) are placeholders;
   rename in `build.gradle.kts` before publishing.
 - Targets Gradle 8+ / JDK 17 toolchain. The verifier core has no Gradle
   dependencies and is unit-tested (`src/test/kotlin`); the plugin wiring targets

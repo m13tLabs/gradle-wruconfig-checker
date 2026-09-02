@@ -164,7 +164,7 @@ Beyond the classpath check. Off by default; not in the Python validator or
   artifacts.
 - The `[APPDIR]\..`-before-`[APPDIR]` replacement order is load-bearing.
 - Registry default is the **last** pipe field; keep the `>= 5` length guard.
-- Group/plugin id (`de.m13t.gradle` / `de.m13t.wrunconfig-verify`) are placeholders
+- Group/plugin id (`de.m13t.oss` / `de.m13t.wrunconfig-verify`) are placeholders
   — rename before publishing.
 
 ## Environment / build caveats
