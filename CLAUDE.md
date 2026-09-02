@@ -20,11 +20,12 @@ called out under "Deviations" below.
 build.gradle.kts / settings.gradle.kts   Gradle 8+, Kotlin JVM plugin, JDK 17 toolchain
 src/main/kotlin/de/m13t/wrunconfig/
   WrunconfigVerifier.kt      PURE logic (no Gradle deps) — parse, resolve, extract, check
-  WrunconfigVerifyExtension.kt  DSL: wrunconfigDir, applicationRoot, failOnDropped, failOnDynamic
+  WrunconfigVerifyExtension.kt  DSL: wrunconfigDir, applicationRoot, failOnDropped, failOnDynamic, verifyCatalog
   WrunconfigVerifyTask.kt    @CacheableTask wrapper: inputs/outputs, report, fails build
   WrunconfigVerifyPlugin.kt  registers extension + task, wires task into `check`
-src/test/kotlin/...          JUnit5 unit tests of the pure verifier
+src/test/kotlin/...          JUnit5 unit tests of the pure verifier + TestKit functional tests
 tools/WrunconfigVerify.java  same logic as a single-file CLI (JDK 11+, `java <file>.java`)
+                             — classpath check only; no catalog check (plugin-only)
 samples/App.wrunconfig       realistic example
 ```
 
@@ -117,6 +118,30 @@ the main capability the Python validator lacks.
    `FAIL`. Present → `OK`.
 
 Exit/return non-zero if any config fails.
+
+## Catalog (`.cat`) sync check — plugin-only, opt-in (`verifyCatalog`)
+
+Beyond the classpath check. Off by default; not in the Python validator or
+`tools/WrunconfigVerify.java`.
+
+- Catalog is the **sibling, same basename**: `<name>.wrunconfig` → `<name>.cat`
+  (so `App.exe.wrunconfig` → `App.exe.cat`). `name.removeSuffix(".wrunconfig") + ".cat"`.
+- Model: every regular file under `applicationRoot` (the **whole** staged tree,
+  not just the classpath; `.cat`/`.wrunconfig` files themselves excluded) must
+  have its hash listed among the catalog's member digests. An uncovered file =
+  payload changed since signing → `DRIFT` → build fails ("re-sign required").
+- `MISSING` (no sibling `.cat`), `ERROR` (unparseable / no member hashes), and
+  `DRIFT` all fail the build when `verifyCatalog` is on. `isFailure()` returns
+  true for any non-`OK` `CatalogResult` (which is non-null only when enabled).
+- Catalog parsing is a **minimal dependency-free DER walk** (`WrunconfigVerifier`,
+  `parseCatalogDigests` / `collectDigests`): it collects every member `DigestInfo`
+  (`SEQUENCE { AlgorithmIdentifier(hash OID), OCTET STRING }`, OIDs in `HASH_OIDS`)
+  plus every raw 20/32-byte subject identifier, recursing into primitive OCTET
+  STRINGs that themselves wrap DER (PKCS#7 `eContent`). Fallback: hex reference
+  tags (ASCII or UTF-16LE). Covers `signtool` / `makeappx` catalogs (the MSIX
+  case). Not a signature/trust check — only hash coverage.
+- Task inputs: `catalogFiles` (`**/*.cat` under `wrunconfigDir`, `@Optional`) +
+  the existing `applicationFiles` track staleness; `verifyCatalog` is an `@Input`.
 
 ## Deviations from the Python validator (intentional)
 

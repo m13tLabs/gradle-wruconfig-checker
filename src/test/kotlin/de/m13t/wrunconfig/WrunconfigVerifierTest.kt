@@ -1,11 +1,13 @@
 package de.m13t.wrunconfig
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.security.MessageDigest
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -114,5 +116,90 @@ class WrunconfigVerifierTest {
         val r = verifier().verify(f)
         assertEquals(Status.OK, r.status)
         assertEquals(2, r.dynamic.size)
+    }
+
+    // --- catalog (.cat) <-> app-tree sync -----------------------------------
+
+    private fun appXml() =
+        """
+        <Configuration><Process>
+          <WorkingDirectory>[APPDIR]\client</WorkingDirectory>
+          <Arguments>-cp "lib.jar" com.example.Main [ARGS]</Arguments>
+        </Process></Configuration>
+        """.trimIndent()
+
+    private fun stagedFiles() = appRoot.walkTopDown().filter { it.isFile }.toList()
+
+    private fun sha256(f: File): ByteArray = MessageDigest.getInstance("SHA-256").digest(f.readBytes())
+
+    private fun derLen(n: Int): ByteArray = when {
+        n < 0x80 -> byteArrayOf(n.toByte())
+        n < 0x100 -> byteArrayOf(0x81.toByte(), n.toByte())
+        else -> byteArrayOf(0x82.toByte(), (n ushr 8).toByte(), n.toByte())
+    }
+
+    private fun tlv(tag: Int, body: ByteArray) = byteArrayOf(tag.toByte()) + derLen(body.size) + body
+    private fun seq(vararg parts: ByteArray) = tlv(0x30, parts.fold(ByteArray(0)) { a, b -> a + b })
+
+    // 2.16.840.1.101.3.4.2.1
+    private val sha256Oid =
+        byteArrayOf(0x06, 0x09, 0x60, 0x86.toByte(), 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01)
+
+    private fun digestInfo(hash: ByteArray) = seq(seq(sha256Oid, byteArrayOf(0x05, 0x00)), tlv(0x04, hash))
+
+    /** A minimal CTL-ish DER: SEQUENCE of member SEQUENCEs, each wrapping a DigestInfo. */
+    private fun catalog(hashes: List<ByteArray>) =
+        seq(*hashes.map { seq(digestInfo(it)) }.toTypedArray())
+
+    private fun catVerifier() = WrunconfigVerifier(appRoot, verifyCatalog = true)
+
+    @Test fun `catalog covering the whole app tree passes`() {
+        val f = cfg("App.exe.wrunconfig", appXml())
+        File(tmp, "App.exe.cat").writeBytes(catalog(stagedFiles().map { sha256(it) }))
+        val r = catVerifier().verify(f)
+        assertEquals(CatalogStatus.OK, r.catalog!!.status)
+        assertEquals("SHA-256", r.catalog!!.algorithm)
+        assertTrue(r.catalog!!.checked >= 5)
+        assertTrue(!catVerifier().isFailure(r))
+    }
+
+    @Test fun `catalog missing a staged file reports drift and fails`() {
+        val f = cfg("App.exe.wrunconfig", appXml())
+        val hashes = stagedFiles().filter { it.name != "extra.jar" }.map { sha256(it) }
+        File(tmp, "App.exe.cat").writeBytes(catalog(hashes))
+        val r = catVerifier().verify(f)
+        assertEquals(CatalogStatus.DRIFT, r.catalog!!.status)
+        assertEquals(listOf("client/extra.jar"), r.catalog!!.uncovered)
+        assertTrue(catVerifier().isFailure(r))
+    }
+
+    @Test fun `missing sibling catalog fails when enabled`() {
+        val f = cfg("App.exe.wrunconfig", appXml())
+        val r = catVerifier().verify(f)
+        assertEquals(CatalogStatus.MISSING, r.catalog!!.status)
+        assertTrue(catVerifier().isFailure(r))
+    }
+
+    @Test fun `unreadable catalog fails`() {
+        val f = cfg("App.exe.wrunconfig", appXml())
+        File(tmp, "App.exe.cat").writeText("not a catalog at all")
+        val r = catVerifier().verify(f)
+        assertEquals(CatalogStatus.ERROR, r.catalog!!.status)
+    }
+
+    @Test fun `catalog check is off by default`() {
+        val f = cfg("App.exe.wrunconfig", appXml())
+        assertNull(verifier().verify(f).catalog)
+    }
+
+    @Test fun `digests inside a pkcs7-wrapped octet string are still found`() {
+        val f = cfg("App.exe.wrunconfig", appXml())
+        val ctl = catalog(stagedFiles().map { sha256(it) })
+        // SEQUENCE { OID signedData, [0] { OCTET STRING { <ctl> } } }
+        val signedDataOid =
+            byteArrayOf(0x06, 0x09, 0x2A, 0x86.toByte(), 0x48, 0x86.toByte(), 0xF7.toByte(), 0x0D, 0x01, 0x07, 0x02)
+        File(tmp, "App.exe.cat").writeBytes(seq(signedDataOid, tlv(0xA0, tlv(0x04, ctl))))
+        val r = catVerifier().verify(f)
+        assertEquals(CatalogStatus.OK, r.catalog!!.status)
     }
 }

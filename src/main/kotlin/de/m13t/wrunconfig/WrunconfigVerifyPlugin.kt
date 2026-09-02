@@ -11,6 +11,7 @@ class WrunconfigVerifyPlugin : Plugin<Project> {
         ext.applicationRoot.convention(project.layout.buildDirectory.dir("msix/application"))
         ext.failOnDropped.convention(false)
         ext.failOnDynamic.convention(false)
+        ext.verifyCatalog.convention(false)
 
         val verify = project.tasks.register("verifyWrunconfig", WrunconfigVerifyTask::class.java) { task ->
             task.group = LifecycleBasePlugin.VERIFICATION_GROUP
@@ -18,10 +19,14 @@ class WrunconfigVerifyPlugin : Plugin<Project> {
             task.wrunconfigFiles.from(
                 ext.wrunconfigDir.map { dir -> dir.asFileTree.matching { it.include("**/*.wrunconfig") } },
             )
+            task.catalogFiles.from(
+                ext.wrunconfigDir.map { dir -> dir.asFileTree.matching { it.include("**/*.cat") } },
+            )
             task.applicationFiles.from(ext.applicationRoot.map { it.asFileTree })
             task.applicationRoot.set(ext.applicationRoot)
             task.failOnDropped.set(ext.failOnDropped)
             task.failOnDynamic.set(ext.failOnDynamic)
+            task.verifyCatalog.set(ext.verifyCatalog)
             task.report.set(project.layout.buildDirectory.file("reports/wrunconfig/verify.txt"))
         }
 

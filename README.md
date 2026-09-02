@@ -64,6 +64,7 @@ wrunconfigVerify {
     applicationRoot.set(layout.buildDirectory.dir("msix/application"))
     failOnDropped.set(false)   // fail on cp entries that aren't a dir / .jar / .zip
     failOnDynamic.set(false)   // fail on cp entries unresolved at build time
+    verifyCatalog.set(false)   // also check the sibling <name>.cat covers the staged tree
 }
 
 // The classpath is verified against the *staged* app tree, so run after staging:
@@ -97,6 +98,30 @@ src/wrunconfig/App.wrunconfig
   which also flags corrupt jars. It confirms the main class is *reachable*; it is
   not a full JVM link of transitive dependencies. If you need that, run the
   standalone tool below with `jshell` available, or add a `JavaExec` link probe.
+
+## Catalog (`.cat`) sync check — opt-in
+
+With `verifyCatalog.set(true)`, each config is also checked against its **sibling
+Authenticode catalog** — `App.exe.wrunconfig` pairs with `App.exe.cat` in the same
+directory. Every file staged under `applicationRoot` must have its hash listed as
+a member of the catalog; a file that isn't means the payload changed since the
+catalog was signed and **the package must be re-signed**. A missing, unparseable,
+or drifted catalog fails the build:
+
+```
+src/wrunconfig/App.exe.wrunconfig
+  main    : com.acme.client.Main
+  link    : OK (main class present)
+  catalog : DRIFT - 2/312 staged file(s) not in App.exe.cat - re-sign required
+  resign  : client/lib/deps.jar, client/config/app.properties
+
+=== 1 failure(s) in 1 config(s) ===
+```
+
+Catalog parsing is dependency-free (a minimal DER walk collecting member digests);
+it covers `signtool` / `makeappx` catalogs. It checks **hash coverage only** — not
+the signature or the signer's trust chain. This check is plugin-only; the
+standalone CLI does not implement it.
 
 ## Standalone CLI (no Gradle)
 

@@ -10,6 +10,7 @@ import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -25,6 +26,12 @@ abstract class WrunconfigVerifyTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val wrunconfigFiles: ConfigurableFileCollection
 
+    /** Sibling `*.cat` catalogs, tracked for up-to-date checks (used when [verifyCatalog]). */
+    @get:InputFiles
+    @get:Optional
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val catalogFiles: ConfigurableFileCollection
+
     /** Staged application tree, tracked for up-to-date checks. */
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -38,6 +45,9 @@ abstract class WrunconfigVerifyTask : DefaultTask() {
 
     @get:Input
     abstract val failOnDynamic: Property<Boolean>
+
+    @get:Input
+    abstract val verifyCatalog: Property<Boolean>
 
     @get:OutputFile
     abstract val report: RegularFileProperty
@@ -57,6 +67,7 @@ abstract class WrunconfigVerifyTask : DefaultTask() {
             appRoot,
             failOnDropped = failOnDropped.getOrElse(false),
             failOnDynamic = failOnDynamic.getOrElse(false),
+            verifyCatalog = verifyCatalog.getOrElse(false),
         )
 
         val out = StringBuilder()
@@ -66,7 +77,9 @@ abstract class WrunconfigVerifyTask : DefaultTask() {
             val result = verifier.verify(f)
             val failed = verifier.isFailure(result)
             if (failed) failures++
-            render(result, failedByStrict = failed && result.status == Status.OK, out)
+            val strictOnly = failed && result.status == Status.OK &&
+                (result.catalog == null || result.catalog.status == CatalogStatus.OK)
+            render(result, failedByStrict = strictOnly, out)
         }
         val summary = "=== $failures failure(s) in ${files.size} config(s) ==="
         out.append('\n').append(summary).append('\n')
@@ -80,6 +93,7 @@ abstract class WrunconfigVerifyTask : DefaultTask() {
     }
 
     private fun render(r: ConfigResult, failedByStrict: Boolean, sb: StringBuilder) {
+        val oneLine = r.status == Status.SKIP || r.linkDetail == null
         when {
             r.status == Status.SKIP -> sb.append("${r.file}  SKIP (${r.message})\n")
             r.linkDetail == null -> sb.append("${r.file}  FAIL (${r.message})\n")   // parse / workdir / missing entry
@@ -96,6 +110,20 @@ abstract class WrunconfigVerifyTask : DefaultTask() {
                 if (failedByStrict)
                     sb.append("  strict  : failing (dropped/dynamic entries not allowed)\n")
             }
+        }
+        renderCatalog(r, oneLine, sb)
+    }
+
+    private fun renderCatalog(r: ConfigResult, oneLineParent: Boolean, sb: StringBuilder) {
+        val c = r.catalog ?: return
+        // give the catalog detail a header if the classpath section was a one-liner
+        if (oneLineParent) sb.append("  (").append(r.file.name).append(")\n")
+        sb.append("  catalog : ${c.status} - ${c.message}\n")
+        if (c.uncovered.isNotEmpty()) {
+            val show = c.uncovered.take(20)
+            sb.append("  resign  : ${show.joinToString(", ")}")
+            if (c.uncovered.size > show.size) sb.append(", ... (+${c.uncovered.size - show.size} more)")
+            sb.append('\n')
         }
     }
 }
