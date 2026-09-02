@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "de.m13t.gradle"
-version = "0.1.0"
+version = findProperty('releaseVersion') ?: '0.0.1-SNAPSHOT'
 
 repositories { mavenCentral() }
 
