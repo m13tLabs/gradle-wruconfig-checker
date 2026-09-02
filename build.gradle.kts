@@ -4,7 +4,7 @@ plugins {
     `java-gradle-plugin`
     kotlin("jvm") version "2.4.10"
     id("com.gradle.plugin-publish") version "2.1.1"
-    id("com.vanniktech.maven.publish") version "0.35.0"
+    id("com.vanniktech.maven.publish") version "0.37.0"
 }
 
 group = "de.m13t.oss"
