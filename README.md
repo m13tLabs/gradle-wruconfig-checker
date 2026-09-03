@@ -1,5 +1,9 @@
 # wrunconfig-verify
 
+[![CI](https://github.com/m13tLabs/gradle-wruconfig-checker/actions/workflows/ci.yml/badge.svg)](https://github.com/m13tLabs/gradle-wruconfig-checker/actions/workflows/ci.yml)
+![Gradle Plugin Portal Version](https://img.shields.io/gradle-plugin-portal/v/de.m13t.wrunconfig-verify)
+
+
 A Gradle plugin that verifies the Java classpath declared in **MSIX-Power-Wrapper**
 `.wrunconfig` files: it checks that every static classpath entry exists in the
 staged application tree and that the declared main class is actually present on
