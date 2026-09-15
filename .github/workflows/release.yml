@@ -48,7 +48,7 @@ jobs:
         with:
           distribution: 'temurin' # As good as any other, see: https://github.com/actions/setup-java#supported-distributions
           java-package: 'jdk'
-          java-version: '17'
+          java-version: '16.0.2+7'
           check-latest: true
           cache: 'gradle'
 
