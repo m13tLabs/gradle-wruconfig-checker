@@ -1,4 +1,21 @@
 
+## [0.3.0](https://github.com/m13tLabs/gradle-wruconfig-checker/compare/v0.2.0...v0.3.0) (2026-09-26)
+
+### Dependency Updates
+
+* **deps:** Update plugin org.jetbrains.kotlin.jvm to v2.4.20 ([101d1af](https://github.com/m13tLabs/gradle-wruconfig-checker/commit/101d1af4d89cc33cb0416889ee6abe010f41c44f))
+
+* **deps:** Update plugin com.gradle.plugin-publish to v2.2.1 ([f4bb345](https://github.com/m13tLabs/gradle-wruconfig-checker/commit/f4bb3458ddcff5b18fc33707dc5ab7e2365dbca6))
+
+* **deps:** Update dependency java-jdk to v17.0.20+101 ([598b77a](https://github.com/m13tLabs/gradle-wruconfig-checker/commit/598b77a68e4344d8e0f561ea5747ea51065c2564))
+
+* **deps:** Update dependency java-jdk to v25 ([658c3e9](https://github.com/m13tLabs/gradle-wruconfig-checker/commit/658c3e94fef6aab9847ecc4cac484f327cbff3bd))
+
+* **deps:** Update gradle to v9.8.0 ([851ced4](https://github.com/m13tLabs/gradle-wruconfig-checker/commit/851ced4f58d861f0c40699f6dec559cba1e92c91))
+
+
+
+
 ## [0.2.0](https://github.com/m13tLabs/gradle-wruconfig-checker/compare/v0.1.0...v0.2.0) (2026-09-03)
 
 ### Bug Fixes
