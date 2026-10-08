@@ -2,7 +2,7 @@ import com.vanniktech.maven.publish.GradlePublishPlugin
 
 plugins {
     `java-gradle-plugin`
-    kotlin("jvm") version "2.4.20"
+    kotlin("jvm") version "2.4.21"
     id("com.gradle.plugin-publish") version "2.2.1"
     id("com.vanniktech.maven.publish") version "0.37.0"
 }
